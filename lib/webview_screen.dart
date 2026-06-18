@@ -33,8 +33,8 @@ class _WebViewScreenState extends State<WebViewScreen> {
   void _initConnectivity() {
     _connectivitySubscription = Connectivity()
         .onConnectivityChanged
-        .listen((List<ConnectivityResult> results) {
-      final hasNet = results.any((r) => r != ConnectivityResult.none);
+        .listen((ConnectivityResult result) {
+      final hasNet = result != ConnectivityResult.none;
       if (mounted) {
         setState(() => _hasInternet = hasNet);
         if (hasNet && _hasError) {
@@ -74,14 +74,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
             }
           },
           onNavigationRequest: (request) {
-            // Allow all navigation within the store
-            // Block external links from opening inside app
-            final uri = Uri.parse(request.url);
-            final storeUri = Uri.parse(_storeUrl);
-            if (uri.host == storeUri.host || request.isMainFrame == false) {
-              return NavigationDecision.navigate;
-            }
-            // For truly external links, still navigate (or you can launch externally)
             return NavigationDecision.navigate;
           },
         ),
@@ -95,18 +87,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
       _hasError = false;
     });
     _controller.reload();
-  }
-
-  void _goHome() {
-    _controller.loadRequest(Uri.parse(_storeUrl));
-  }
-
-  Future<bool> _onWillPop() async {
-    if (await _controller.canGoBack()) {
-      _controller.goBack();
-      return false;
-    }
-    return true;
   }
 
   @override
@@ -124,7 +104,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
         if (await _controller.canGoBack()) {
           _controller.goBack();
         } else {
-          // Show exit dialog
           final shouldExit = await showDialog<bool>(
             context: context,
             builder: (ctx) => AlertDialog(
@@ -155,15 +134,12 @@ class _WebViewScreenState extends State<WebViewScreen> {
         body: SafeArea(
           child: Stack(
             children: [
-              // ── WebView ──────────────────────────────────────────
               if (!_hasError)
                 WebViewWidget(controller: _controller),
 
-              // ── No Internet / Error Screen ───────────────────────
               if (_hasError || !_hasInternet)
                 _buildErrorScreen(),
 
-              // ── Top Progress Bar ─────────────────────────────────
               if (_isLoading && !_hasError)
                 Positioned(
                   top: 0,
@@ -179,7 +155,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
                   ),
                 ),
 
-              // ── Initial Full-Screen Loader (first load only) ─────
               if (_isLoading && _loadingProgress < 20 && !_hasError)
                 _buildInitialLoader(),
             ],
