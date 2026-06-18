@@ -1,39 +1,39 @@
-workflows:
-  android-workflow:
-    name: MS Store Oman - Android
-    max_build_duration: 60
-    environment:
-      flutter: stable
-    scripts:
-      - name: Save Dart files
-        script: |
-          cp -r lib /tmp/lib_backup
-          cp pubspec.yaml /tmp/pubspec_backup.yaml
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
 
-      - name: Regenerate Android folder
-        script: |
-          rm -rf android
-          flutter create --org com.msstore --project-name ms_store_oman .
+android {
+    namespace "com.msstore.oman"
+    compileSdk 34
 
-      - name: Restore your code
-        script: |
-          rm -rf lib
-          cp -r /tmp/lib_backup lib
-          cp /tmp/pubspec_backup.yaml pubspec.yaml
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
 
-      - name: Get dependencies
-        script: flutter pub get
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
 
-      - name: Build APK
-        script: flutter build apk --release
+    defaultConfig {
+        applicationId "com.msstore.oman"
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
 
-    artifacts:
-      - build/app/outputs/flutter-apk/app-release.apk
+    buildTypes {
+        release {
+            signingConfig signingConfigs.debug
+            minifyEnabled false
+            shrinkResources false
+        }
+    }
+}
 
-    publishing:
-      email:
-        recipients:
-          - your@email.com
-        notify:
-          success: true
-          failure: true
+flutter {
+    source '../..'
+}
