@@ -35,6 +35,10 @@ jobs:
           cp /tmp/pubspec_backup.yaml pubspec.yaml
           flutter pub get
 
+      - name: Fix AndroidManifest permissions
+        run: |
+          sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"\/>\n\n    <application/' android/app/src/main/AndroidManifest.xml
+
       - name: Build APK
         run: flutter build apk --release
 
