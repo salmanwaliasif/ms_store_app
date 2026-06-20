@@ -1,11 +1,11 @@
-name: Build APK
+name: Build Apps
 
 on:
   push:
     branches: [ main ]
 
 jobs:
-  build:
+  android-build:
     runs-on: ubuntu-latest
 
     steps:
@@ -49,8 +49,38 @@ jobs:
       - name: Generate app icons
         run: flutter pub run flutter_launcher_icons
 
-      - name: Build APK
+      - name: Create keystore and sign
+        run: |
+          keytool -genkey -v -keystore android/ms-store.jks \
+            -alias ms-store -keyalg RSA -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=MS Store, OU=Oman, O=MS Store, L=Muscat, ST=Muscat, C=OM" \
+            -storepass msstore123 -keypass msstore123 -noprompt
+
+          cat >> android/app/build.gradle << 'EOF'
+
+android {
+    signingConfigs {
+        release {
+            storeFile file("ms-store.jks")
+            storePassword "msstore123"
+            keyAlias "ms-store"
+            keyPassword "msstore123"
+        }
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+        }
+    }
+}
+EOF
+
+      - name: Build signed APK
         run: flutter build apk --release
+
+      - name: Build signed AAB
+        run: flutter build appbundle --release
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -58,19 +88,12 @@ jobs:
           name: ms-store-oman.apk
           path: build/app/outputs/flutter-apk/app-release.apk
 
-      - name: Sign APK
-        run: |
-          keytool -genkey -v -keystore ms-store.jks \
-            -alias ms-store -keyalg RSA -keysize 2048 \
-            -validity 10000 \
-            -dname "CN=MS Store, OU=Oman, O=MS Store, L=Muscat, ST=Muscat, C=OM" \
-            -storepass msstore123 -keypass msstore123 -noprompt
-          
-          flutter build apk --release \
-            --dart-define=key.store=ms-store.jks \
-            --dart-define=key.alias=ms-store \
-            --dart-define=key.store.password=msstore123 \
-            --dart-define=key.password=msstore123
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: ms-store-oman.aab
+          path: build/app/outputs/bundle/release/app-release.aab
+
   ios-build:
     runs-on: macos-latest
 
@@ -90,7 +113,7 @@ jobs:
           cp -r lib /tmp/lib_backup
           cp pubspec.yaml /tmp/pubspec_backup.yaml
           cp -r assets /tmp/assets_backup
-          rm -rf ios
+          rm -rf ios android
           flutter create --org com.msstore --project-name ms_store_oman .
           rm -rf lib
           cp -r /tmp/lib_backup lib
@@ -99,14 +122,30 @@ jobs:
           cp -r /tmp/assets_backup assets
           flutter pub get
 
-      - name: Generate icons
+      - name: Set iOS app name
+        run: |
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName MS Store" ios/Runner/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleName MS Store" ios/Runner/Info.plist
+
+      - name: Set iOS minimum version
+        run: |
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*/IPHONEOS_DEPLOYMENT_TARGET = 13.0/' ios/Runner.xcodeproj/project.pbxproj
+
+      - name: Generate app icons
         run: flutter pub run flutter_launcher_icons
 
-      - name: Build iOS IPA
-        run: flutter build ipa --release --no-codesign
+      - name: Build iOS
+        run: flutter build ios --release --no-codesign
+
+      - name: Package IPA
+        run: |
+          mkdir -p build/ios/ipa/Payload
+          cp -r build/ios/iphoneos/Runner.app build/ios/ipa/Payload/
+          cd build/ios/ipa
+          zip -r ms-store-oman.ipa Payload/
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: ms-store-oman.ipa
-          path: build/ios/ipa/*.ipa
+          path: build/ios/ipa/ms-store-oman.ipa
