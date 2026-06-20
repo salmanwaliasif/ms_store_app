@@ -71,3 +71,42 @@ jobs:
             --dart-define=key.alias=ms-store \
             --dart-define=key.store.password=msstore123 \
             --dart-define=key.password=msstore123
+  ios-build:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.6'
+          channel: 'stable'
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Regenerate iOS folder
+        run: |
+          cp -r lib /tmp/lib_backup
+          cp pubspec.yaml /tmp/pubspec_backup.yaml
+          cp -r assets /tmp/assets_backup
+          rm -rf ios
+          flutter create --org com.msstore --project-name ms_store_oman .
+          rm -rf lib
+          cp -r /tmp/lib_backup lib
+          cp /tmp/pubspec_backup.yaml pubspec.yaml
+          rm -rf assets
+          cp -r /tmp/assets_backup assets
+          flutter pub get
+
+      - name: Generate icons
+        run: flutter pub run flutter_launcher_icons
+
+      - name: Build iOS IPA
+        run: flutter build ipa --release --no-codesign
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ms-store-oman.ipa
+          path: build/ios/ipa/*.ipa
