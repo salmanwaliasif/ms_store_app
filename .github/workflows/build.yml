@@ -49,7 +49,7 @@ jobs:
       - name: Generate app icons
         run: flutter pub run flutter_launcher_icons
 
-      - name: Create keystore and sign
+      - name: Create keystore
         run: |
           keytool -genkey -v -keystore android/ms-store.jks \
             -alias ms-store -keyalg RSA -keysize 2048 \
@@ -57,24 +57,29 @@ jobs:
             -dname "CN=MS Store, OU=Oman, O=MS Store, L=Muscat, ST=Muscat, C=OM" \
             -storepass msstore123 -keypass msstore123 -noprompt
 
-          cat >> android/app/build.gradle << 'EOF'
-
-android {
-    signingConfigs {
-        release {
-            storeFile file("ms-store.jks")
-            storePassword "msstore123"
-            keyAlias "ms-store"
-            keyPassword "msstore123"
-        }
-    }
-    buildTypes {
-        release {
-            signingConfig signingConfigs.release
-        }
-    }
-}
-EOF
+      - name: Inject signing config
+        run: |
+          python3 - <<PYEOF
+          content = open('android/app/build.gradle').read()
+          signing = """
+          signingConfigs {
+              release {
+                  storeFile file("ms-store.jks")
+                  storePassword "msstore123"
+                  keyAlias "ms-store"
+                  keyPassword "msstore123"
+              }
+          }
+          """
+          content = content.replace(
+              'buildTypes {',
+              signing + '\n    buildTypes {'
+          ).replace(
+              'signingConfig signingConfigs.debug',
+              'signingConfig signingConfigs.release'
+          )
+          open('android/app/build.gradle', 'w').write(content)
+          PYEOF
 
       - name: Build signed APK
         run: flutter build apk --release
