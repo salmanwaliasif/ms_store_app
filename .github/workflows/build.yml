@@ -36,6 +36,7 @@ jobs:
           cp /tmp/pubspec_backup.yaml pubspec.yaml
           rm -rf assets
           cp -r /tmp/assets_backup assets
+          mkdir -p assets/images
           flutter pub get
 
       - name: Fix AndroidManifest permissions
@@ -51,25 +52,26 @@ jobs:
 
       - name: Create keystore
         run: |
-          keytool -genkey -v -keystore android/ms-store.jks \
+          keytool -genkey -v -keystore /tmp/ms-store.jks \
             -alias ms-store -keyalg RSA -keysize 2048 \
             -validity 10000 \
             -dname "CN=MS Store, OU=Oman, O=MS Store, L=Muscat, ST=Muscat, C=OM" \
             -storepass msstore123 -keypass msstore123 -noprompt
+          cp /tmp/ms-store.jks android/app/ms-store.jks
 
       - name: Inject signing config
         run: |
           python3 - <<PYEOF
           content = open('android/app/build.gradle').read()
           signing = """
-          signingConfigs {
-              release {
-                  storeFile file("ms-store.jks")
-                  storePassword "msstore123"
-                  keyAlias "ms-store"
-                  keyPassword "msstore123"
+              signingConfigs {
+                  release {
+                      storeFile file("ms-store.jks")
+                      storePassword "msstore123"
+                      keyAlias "ms-store"
+                      keyPassword "msstore123"
+                  }
               }
-          }
           """
           content = content.replace(
               'buildTypes {',
@@ -125,6 +127,7 @@ jobs:
           cp /tmp/pubspec_backup.yaml pubspec.yaml
           rm -rf assets
           cp -r /tmp/assets_backup assets
+          mkdir -p assets/images
           flutter pub get
 
       - name: Set iOS app name
