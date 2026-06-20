@@ -66,7 +66,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
             if (mounted) setState(() => _isLoading = false);
           },
           onWebResourceError: (WebResourceError error) {
-            // Only show error for main frame failures, ignore sub-resource errors
             if (error.isForMainFrame == true) {
               if (mounted) {
                 setState(() {
@@ -82,3 +81,174 @@ class _WebViewScreenState extends State<WebViewScreen> {
         ),
       )
       ..loadRequest(Uri.parse(_storeUrl));
+  }
+
+  void _reload() {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
+    _controller.loadRequest(Uri.parse(_storeUrl));
+  }
+
+  @override
+  void dispose() {
+    _connectivitySubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        if (await _controller.canGoBack()) {
+          _controller.goBack();
+        } else {
+          final shouldExit = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Exit App'),
+              content: const Text('Are you sure you want to exit?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text(
+                    'Exit',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
+              ],
+            ),
+          );
+          if (shouldExit == true) {
+            SystemNavigator.pop();
+          }
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              WebViewWidget(controller: _controller),
+              if (_hasError && _hasInternet)
+                _buildErrorScreen(isNoInternet: false),
+              if (!_hasInternet)
+                _buildErrorScreen(isNoInternet: true),
+              if (_isLoading && !_hasError)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: LinearProgressIndicator(
+                    value: _loadingProgress / 100,
+                    minHeight: 3,
+                    backgroundColor: Colors.transparent,
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Color(0xFF1A1A2E),
+                    ),
+                  ),
+                ),
+              if (_isLoading && _loadingProgress < 15 && !_hasError)
+                _buildInitialLoader(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInitialLoader() {
+    return Container(
+      color: Colors.white,
+      child: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 36,
+              height: 36,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1A1A2E)),
+              ),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Loading store...',
+              style: TextStyle(
+                color: Color(0xFF888888),
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorScreen({required bool isNoInternet}) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.all(32),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isNoInternet
+                  ? Icons.wifi_off_rounded
+                  : Icons.error_outline_rounded,
+              size: 72,
+              color: const Color(0xFFCCCCCC),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              isNoInternet ? 'No Internet Connection' : 'Something went wrong',
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF333333),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              isNoInternet
+                  ? 'Please check your connection and try again.'
+                  : 'Unable to load the store. Please try again.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFF888888),
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: _reload,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Try Again'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1A1A2E),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 14,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
