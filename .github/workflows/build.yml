@@ -28,16 +28,22 @@ jobs:
         run: |
           cp -r lib /tmp/lib_backup
           cp pubspec.yaml /tmp/pubspec_backup.yaml
+          cp -r assets /tmp/assets_backup
           rm -rf android
           flutter create --org com.msstore --project-name ms_store_oman .
           rm -rf lib
           cp -r /tmp/lib_backup lib
           cp /tmp/pubspec_backup.yaml pubspec.yaml
+          rm -rf assets
+          cp -r /tmp/assets_backup assets
           flutter pub get
 
       - name: Fix AndroidManifest permissions
         run: |
           sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"\/>\n\n    <application/' android/app/src/main/AndroidManifest.xml
+
+      - name: Generate app icons
+        run: flutter pub run flutter_launcher_icons
 
       - name: Build APK
         run: flutter build apk --release
