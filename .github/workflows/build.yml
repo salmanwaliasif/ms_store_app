@@ -57,3 +57,17 @@ jobs:
         with:
           name: ms-store-oman.apk
           path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Sign APK
+        run: |
+          keytool -genkey -v -keystore ms-store.jks \
+            -alias ms-store -keyalg RSA -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=MS Store, OU=Oman, O=MS Store, L=Muscat, ST=Muscat, C=OM" \
+            -storepass msstore123 -keypass msstore123 -noprompt
+          
+          flutter build apk --release \
+            --dart-define=key.store=ms-store.jks \
+            --dart-define=key.alias=ms-store \
+            --dart-define=key.store.password=msstore123 \
+            --dart-define=key.password=msstore123
