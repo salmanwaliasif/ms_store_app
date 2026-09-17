@@ -55,51 +55,128 @@ jobs:
         run: |
           echo "$KEYSTORE_BASE64" | base64 --decode > android/app/ms-store.jks
 
-      - name: Inject signing config + SDK 36
+      - name: Write build.gradle (SDK 36 + release signing)
+        run: |
+          if [ -f android/app/build.gradle.kts ]; then
+            echo "Detected Kotlin DSL (build.gradle.kts)"
+            rm -f android/app/build.gradle
+            cat > android/app/build.gradle.kts <<'EOF'
+          plugins {
+              id("com.android.application")
+              id("kotlin-android")
+              id("dev.flutter.flutter-gradle-plugin")
+          }
+
+          android {
+              namespace = "com.msstore.ms_store_oman"
+              compileSdk = 36
+
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_1_8
+                  targetCompatibility = JavaVersion.VERSION_1_8
+              }
+
+              kotlinOptions {
+                  jvmTarget = "1.8"
+              }
+
+              defaultConfig {
+                  applicationId = "com.msstore.ms_store_oman"
+                  minSdk = 21
+                  targetSdk = 36
+                  versionCode = flutter.versionCode
+                  versionName = flutter.versionName
+              }
+
+              signingConfigs {
+                  create("release") {
+                      keyAlias = System.getenv("KEY_ALIAS")
+                      keyPassword = System.getenv("KEY_PASSWORD")
+                      storeFile = file("ms-store.jks")
+                      storePassword = System.getenv("KEYSTORE_PASSWORD")
+                  }
+              }
+
+              buildTypes {
+                  release {
+                      signingConfig = signingConfigs.getByName("release")
+                      isMinifyEnabled = false
+                      isShrinkResources = false
+                  }
+              }
+          }
+
+          flutter {
+              source = "../.."
+          }
+          EOF
+          else
+            echo "Detected Groovy DSL (build.gradle)"
+            rm -f android/app/build.gradle.kts
+            cat > android/app/build.gradle <<'EOF'
+          plugins {
+              id "com.android.application"
+              id "kotlin-android"
+              id "dev.flutter.flutter-gradle-plugin"
+          }
+
+          android {
+              namespace "com.msstore.ms_store_oman"
+              compileSdk 36
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_1_8
+                  targetCompatibility JavaVersion.VERSION_1_8
+              }
+
+              kotlinOptions {
+                  jvmTarget = '1.8'
+              }
+
+              defaultConfig {
+                  applicationId "com.msstore.ms_store_oman"
+                  minSdk 21
+                  targetSdk 36
+                  versionCode flutter.versionCode
+                  versionName flutter.versionName
+              }
+
+              signingConfigs {
+                  release {
+                      keyAlias System.getenv("KEY_ALIAS")
+                      keyPassword System.getenv("KEY_PASSWORD")
+                      storeFile file("ms-store.jks")
+                      storePassword System.getenv("KEYSTORE_PASSWORD")
+                  }
+              }
+
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.release
+                      minifyEnabled false
+                      shrinkResources false
+                  }
+              }
+          }
+
+          flutter {
+              source '../..'
+          }
+          EOF
+          fi
+
+      - name: Build signed APK
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: |
-          python3 - <<'PYEOF'
-          import os, re
-          content = open('android/app/build.gradle').read()
-
-          signing = f"""
-              signingConfigs {{
-                  release {{
-                      storeFile file("ms-store.jks")
-                      storePassword "{os.environ['KEYSTORE_PASSWORD']}"
-                      keyAlias "{os.environ['KEY_ALIAS']}"
-                      keyPassword "{os.environ['KEY_PASSWORD']}"
-                  }}
-              }}
-          """
-
-          content = content.replace(
-              'buildTypes {',
-              signing + '\n    buildTypes {'
-          ).replace(
-              'signingConfig signingConfigs.debug',
-              'signingConfig signingConfigs.release'
-          )
-
-          content = re.sub(r'compileSdk \d+', 'compileSdk 36', content)
-          content = re.sub(r'compileSdkVersion \d+', 'compileSdkVersion 36', content)
-          content = re.sub(r'targetSdk \d+', 'targetSdk 36', content)
-          content = re.sub(r'targetSdkVersion \d+', 'targetSdkVersion 36', content)
-          content = re.sub(r'minSdk \d+', 'minSdk 21', content)
-          content = re.sub(r'minSdkVersion \d+', 'minSdkVersion 21', content)
-          content = re.sub(r'minSdk flutter\.minSdkVersion', 'minSdk 21', content)
-          content = re.sub(r'minSdkVersion flutter\.minSdkVersion', 'minSdkVersion 21', content)
-
-          open('android/app/build.gradle', 'w').write(content)
-          PYEOF
-
-      - name: Build signed APK
         run: flutter build apk --release
 
       - name: Build signed AAB
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: flutter build appbundle --release
 
       - name: Upload APK
