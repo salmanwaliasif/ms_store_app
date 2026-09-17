@@ -38,7 +38,10 @@ jobs:
           mkdir -p assets/images
           flutter pub get
 
-      - name: Fix AndroidManifest permissions
+      - name: Pin classic Gradle DSL (AGP 9 compatibility)
+        run: |
+          echo "android.newDsl=false" >> android/gradle.properties
+          echo "android.builtInKotlin=false" >> android/gradle.properties
         run: |
           sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"\/>\n\n    <application/' android/app/src/main/AndroidManifest.xml
 
