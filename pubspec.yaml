@@ -12,7 +12,7 @@ dependencies:
   webview_flutter: ^4.4.2
   webview_flutter_android: ^3.12.1
   webview_flutter_wkwebview: ^3.9.1
-  connectivity_plus: ^5.0.2
+  connectivity_plus: ^7.0.0
   flutter_spinkit: ^5.2.0
   url_launcher: ^6.2.2
 
@@ -33,16 +33,3 @@ flutter:
   assets:
     - assets/icon/
     - assets/images/
-    
-workflows:
-  android-workflow:
-    name: Android Build
-    environment:
-      flutter: 3.19.6
-    scripts:
-      - name: Get packages
-        script: flutter pub get
-      - name: Build APK
-        script: flutter build apk --release
-    artifacts:
-      - build/app/outputs/flutter-apk/app-release.apk
