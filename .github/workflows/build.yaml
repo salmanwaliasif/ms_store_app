@@ -40,8 +40,12 @@ jobs:
 
       - name: Pin classic Gradle DSL (AGP 9 compatibility)
         run: |
-          echo "android.newDsl=false" >> android/gradle.properties
-          echo "android.builtInKotlin=false" >> android/gradle.properties
+          sed -i '/^android.newDsl=/d' android/gradle.properties
+          sed -i '/^android.builtInKotlin=/d' android/gradle.properties
+          printf '\nandroid.newDsl=false\nandroid.builtInKotlin=false\n' >> android/gradle.properties
+          echo "----- android/gradle.properties -----"
+          cat android/gradle.properties
+          echo "--------------------------------------"
 
       - name: Fix AndroidManifest permissions
         run: |
@@ -77,12 +81,8 @@ jobs:
               compileSdk = 36
 
               compileOptions {
-                  sourceCompatibility = JavaVersion.VERSION_1_8
-                  targetCompatibility = JavaVersion.VERSION_1_8
-              }
-
-              kotlinOptions {
-                  jvmTarget = "1.8"
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
               }
 
               defaultConfig {
@@ -111,6 +111,10 @@ jobs:
               }
           }
 
+          kotlin {
+              jvmToolchain(17)
+          }
+
           flutter {
               source = "../.."
           }
@@ -130,12 +134,8 @@ jobs:
               compileSdk 36
 
               compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_1_8
-                  targetCompatibility JavaVersion.VERSION_1_8
-              }
-
-              kotlinOptions {
-                  jvmTarget = '1.8'
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
               }
 
               defaultConfig {
@@ -162,6 +162,10 @@ jobs:
                       shrinkResources false
                   }
               }
+          }
+
+          kotlin {
+              jvmToolchain(17)
           }
 
           flutter {
