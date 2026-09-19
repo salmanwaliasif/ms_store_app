@@ -63,6 +63,13 @@ jobs:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
           echo "$KEYSTORE_BASE64" | base64 --decode > android/app/ms-store.jks
+          echo "Decoded keystore size: $(wc -c < android/app/ms-store.jks) bytes"
+
+      - name: Validate keystore (fail fast if corrupted)
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          keytool -list -v -keystore android/app/ms-store.jks -storepass "$KEYSTORE_PASSWORD" | head -20
 
       - name: Write build.gradle (SDK 36 + release signing)
         run: |
