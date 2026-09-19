@@ -33,8 +33,8 @@ class _WebViewScreenState extends State<WebViewScreen> {
   void _initConnectivity() {
     _connectivitySubscription = Connectivity()
         .onConnectivityChanged
-        .listen((ConnectivityResult result) {
-      final hasNet = result != ConnectivityResult.none;
+        .listen((List<ConnectivityResult> results) {
+      final hasNet = results.any((r) => r != ConnectivityResult.none);
       if (mounted) {
         setState(() => _hasInternet = hasNet);
         if (hasNet && _hasError) {
